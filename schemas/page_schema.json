@@ -1,0 +1,78 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id":"page_schema.json",
+    "type": "object",
+    "properties": {
+        "index": {
+            "anyOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            ]
+        },
+        "shape": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "description": "The shape of the TIFF page in the form [height, width]"
+        },
+        "dtype": {
+            "type": "string",
+            "description": "The data type of the TIFF page"
+        },
+        "image_description":{
+            "type":["string","null"]
+        },
+        "tags": {
+            "type": "array",
+            "items":{
+                "type":"array",
+                "minItems": 5,
+                "maxItems": 5,
+                "items": [
+                {
+                    "type": "string",
+                    "description": "name"
+                },
+                {
+                    "type": "string",
+                    "description":"dtype"
+                },
+                {
+                    "type": "integer",
+                    "description":"valueoffset"
+                },
+                {
+                    "type": "integer",
+                    "description":"count"
+                },
+                {
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "number"
+                        }
+                    ],
+                    "description": "value"
+                }
+                ]
+            }
+        }
+    },
+    "required": ["shape", "dtype", "tags"]
+}

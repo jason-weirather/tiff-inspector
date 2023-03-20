@@ -1,0 +1,84 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id":"series_schema.json",
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The name of the TiffSeries"
+        },
+        "axes": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A string indicating the order of the axes of the image data in the TiffPages of the TiffSeries."
+        },
+        "dtype": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The data type of the image data in the TiffPages of the TiffSeries."
+        },
+        "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "An integer indicating the index of the TiffSeries in a TIFF file that contains multiple TiffSeries."
+        },
+        "is_multifile": {
+            "type": "boolean",
+            "description": "A boolean indicating whether the TiffSeries is part of a multi-file TIFF."
+        },
+        "is_pyramidal": {
+            "type": "boolean",
+            "description": "A boolean indicating whether the TiffSeries is stored in a pyramidal format, where each subsequent TiffPage contains a lower resolution representation of the image data."
+        },
+        "keyframe": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "An integer indicating the index of the TiffPage in the TiffSeries that serves as a reference frame for the other TiffPages."
+        },
+        "kind": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A string indicating the type of image data stored in the TiffPages of the TiffSeries."
+        },
+        "level_count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "An integer indicating the number of levels in a pyramidal TiffSeries."
+        },
+        "ndim": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "An integer indicating the number of dimensions of the image data in the TiffPages of the TiffSeries."
+        },
+        "offset": {
+            "type": ["null", "integer"],
+            "minimum": 0,
+            "description": "The offset in bytes from the beginning of the TIFF file where the TiffSeries starts."
+        },
+        "shape": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "integer",
+                "minimum": 1
+            },
+            "description": "A tuple indicating the shape of the image data in the TiffPages of the TiffSeries."
+        },
+        "size": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The total number of elements in the image data of the TiffPages of the TiffSeries."
+        },
+        "transform": {
+            "type": ["null", "string"],
+            "description": "A matrix representing a transformation applied to the image data in the TiffPages of the TiffSeries."
+        },
+        "levels": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"$ref": "level_schema.json"},
+            "description": "A list of TiffSeries that make each level."
+        }
+    },
+    "required": ["axes", "dtype", "index", "shape", "levels"]
+}

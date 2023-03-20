@@ -1,0 +1,49 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id":"tiff_schema.json",
+    "type": "object",
+    "properties": {
+        "file_path": {
+            "type": "string",
+            "description": "The file path of the TIFF file"
+        },
+        "shape": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "description": "The shape of the TIFF file in the form [height, width]"
+        },
+        "dtype": {
+            "type": "string",
+            "description": "The data type of the TIFF file"
+        },
+       "byteorder": {
+            "type": "string",
+            "description": "Byte order of the TIFF file"
+        },
+        "bigtiff": {
+            "type": "boolean",
+            "description": "Indicates whether the TIFF file is a BigTIFF file"
+        },
+        "tiff_version":{
+            "type":"string",
+            "description":"The TIFF version"
+        },
+        "series_count":{
+            "type":"integer",
+            "description":"total number of TiffSeries in the image"
+        },
+        "page_count":{
+            "type":"integer",
+            "description":"total number of TiffPage in the image"
+        },        
+        "series":{
+            "type":"array",
+            "description":"List of series in the tiff",
+            "minItems":1,
+            "items":{"$ref": "series_schema.json"}
+        }
+    },
+    "required": ["file_path", "shape", "dtype", "series"]
+}
