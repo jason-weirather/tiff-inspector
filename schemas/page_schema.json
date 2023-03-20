@@ -4,19 +4,22 @@
     "type": "object",
     "properties": {
         "axes": {
-            "type": "string"
+            "type": "string",
+            "description":"A string representing the order of the axes in the TIFF page, such as 'YX' for a 2D image or 'TYX' for a time series."
         },
         "chunked": {
             "type": "array",
             "items": {
                 "type": "integer"
-            }
+            },
+            "description":"An array representing the chunked shape of the TIFF page, with each element corresponding to the size of a chunk along a given axis."
         },
         "chunks": {
             "type": "array",
             "items": {
                 "type": "integer"
-            }
+            },
+            "description":"An array representing the number of chunks along each axis of the TIFF page."
         },
         "colormap": {
             "anyOf": [
@@ -29,26 +32,30 @@
                         "type": "integer"
                     }
                 }
-            ]
+            ],
+            "description":"An array representing the color map of the TIFF page, or null if there is no color map."
         },
         "dtype": {
             "type": "string",
-            "description": "The data type of the TIFF page"
+            "description":  "The data type of the pixel values in the TIFF page."
         },
         "extrasamples": {
             "type": "array",
             "items": {
                 "type": "integer"
-            }
+            },
+            "description":"An array indicating the interpretation of any extra samples in the TIFF page, such as alpha channels."
         },
         "flags": {
             "type": "array",
             "items": {
                 "type": "string"
-            }
+            },
+            "description":"An array of strings representing various flags associated with the TIFF page, such as 'is_ome' for OME-TIFF or 'is_svs' for SVS files."
         },
         "hash": {
-            "type": "string"
+            "type": "string",
+            "description":"A unique string representing the hash of the TIFF page's data, used to verify data integrity."
         },
         "index": {
             "anyOf": [
@@ -61,22 +68,12 @@
                         "type": "integer"
                     }
                 }
-            ]
-        },
-        "is_ome": {
-            "type": "boolean"
-        },
-        "is_qpi": {
-            "type": "boolean"
-        },
-        "is_scn": {
-            "type": "boolean"
-        },
-        "is_svs": {
-            "type": "boolean"
+            ],
+            "description":"An integer or array of integers representing the index or indices of the TIFF page within a series of TIFF pages."
         },
         "is_tiled": {
-            "type": "boolean"
+            "type": "boolean",
+            "description":"A boolean indicating whether the TIFF page is stored using a tiled layout."
         },
         "jpegheader": {
             "anyOf": [
@@ -86,36 +83,27 @@
                 {
                     "type": "string"
                 }
-            ]
+            ],
+            "description":"A string containing the JPEG header of the TIFF page if it is compressed using JPEG compression, or null if not applicable."
         },
         "nbytes": {
-            "type": "integer"
+            "type": "integer",
+            "description":"The total number of bytes used to store the pixel values in the TIFF page."
         },
         "ndim": {
-            "type": "integer"
+            "type": "integer",
+            "description":"An integer representing the number of dimensions of the TIFF page."
         },
         "sampleformat": {
-            "type": "string"
-        },
-        "index": {
-            "anyOf": [
-                {
-                    "type": "integer"
-                },
-                {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            ]
+            "type": "string",
+            "description":"A string representing the format of the samples in the TIFF page, such as 'unsigned', 'signed', or 'floating'."
         },
         "shape": {
             "type": "array",
             "items": {
                 "type": "integer"
             },
-            "description": "The shape of the TIFF page in the form [height, width]"
+            "description": "An array representing the shape of the TIFF page in the form [height, width]."
         },
         "shaped": {
             "type": "array",
@@ -125,10 +113,8 @@
             "description": "The 5D shape of the TIFF page, represented as an array in the order of [time, z-stack, height, width, channels]. Each dimension corresponds to the size of the respective axis: time (T) for time series, z-stack (Z) for 3D image stacks, height (Y) and width (X) for spatial dimensions, and channels (S) for the number of color channels or image channels in the data. Please note that the interpretation of the time (T) and z-stack (Z) parameters is our best guess and may not be accurate for all cases."
         },
         "size": {
-            "type": "integer"
-        },
-        "image_description":{
-            "type":["string","null"]
+            "type": "integer",
+            "description":"The total number of elements (pixels) in the TIFF page."
         },
         "tags": {
             "type": "array",
@@ -136,40 +122,40 @@
                 "type":"array",
                 "minItems": 5,
                 "maxItems": 5,
-                "items": [
-                {
-                    "type": "string",
-                    "description": "name"
-                },
-                {
-                    "type": "string",
-                    "description":"dtype"
-                },
-                {
-                    "type": "integer",
-                    "description":"valueoffset"
-                },
-                {
-                    "type": "integer",
-                    "description":"count"
-                },
-                {
-                    "anyOf": [
-                        {
-                            "type": "array",
-                            "items": {
-                                "type": "integer"
+                "prefixItems": [
+                    {
+                        "type": "string",
+                        "description": "name"
+                    },
+                    {
+                        "type": "string",
+                        "description":"dtype"
+                    },
+                    {
+                        "type": "integer",
+                        "description":"valueoffset"
+                    },
+                    {
+                        "type": "integer",
+                        "description":"count"
+                    },
+                    {
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                }
+                            },
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "number"
                             }
-                        },
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "number"
-                        }
-                    ],
-                    "description": "value"
-                }
+                        ],
+                        "description": "value"
+                    }
                 ]
             }
         }

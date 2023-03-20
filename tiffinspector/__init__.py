@@ -69,6 +69,7 @@ class TiffInspector:
             "dtype": str(self.tiff.asarray().dtype),
             "byteorder": self.tiff.byteorder,
             "bigtiff": self.tiff.is_bigtiff,
+            "flags": list(self.tiff.flags),
             "series_count":len([x for x in self.tiff.series]),
             "page_count":len([x for x in self.tiff.pages]),
             "series": []
@@ -121,10 +122,6 @@ class TiffInspector:
                                    'flags', 
                                    'hash', 
                                    'index', 
-                                   'is_ome', 
-                                   'is_qpi', 
-                                   'is_scn', 
-                                   'is_svs',  
                                    'is_tiled', 
                                    'jpegheader', 
                                    'nbytes', 
@@ -139,7 +136,7 @@ class TiffInspector:
                         page_report['dtype'] = str(page.dtype)
                         page_report['hash'] = f"0x{format(page_report['hash'] & 0xFFFFFFFF, '08x')}"
                         page_report['tags'] = self._tiff_tags_to_key_type_value_tuple(page.tags) if hasattr(page,'tags') else None
-                        page_report['image_description'] = TiffInspector._get_description_text(page.tags) if hasattr(page,'tags') else None
+                        #page_report['image_description'] = TiffInspector._get_description_text(page.tags) if hasattr(page,'tags') else None
                         page_report['sampleformat'] = sampleformat_to_text(page_report['sampleformat'])
                         page_report['index'] = list(page_report['index']) if isinstance(page_report['index'],tuple) \
                                                                           else page_report['index']
@@ -177,6 +174,9 @@ class TiffInspector:
         # Add whether the file is a BigTIFF file to the HTML string
         html_str += f"<b>BigTIFF:</b> {self.report['bigtiff']}<br>"
         
+        # Addad the list of flags
+        html_str += f"<b>Flags:</b> {self.report['flags']}<br>"
+        
         # Add the total count of series
         html_str += f"<b>Number of Series:</b> {self.report['series_count']}<br>"
         
@@ -209,11 +209,18 @@ class TiffInspector:
                         if k3=='image_description': continue
                         display(Markdown(f"**{k3}:** {v3}"))
                     # Add the page shape to the HTML string
-                    if page['image_description'] is not None and is_xml(page['image_description']):
-                        _d = json.loads(json.dumps(xmltodict.parse(page['image_description'])))
-                        display(JSON(json.loads(json.dumps(truncate_tree(_d,levels,max_text_length))),expanded=expanded))
-                    elif page['image_description'] is not None:
-                        display(HTML(truncate_text_html(html.escape(page['image_description']),max_text_length)))
+                    _tags_dict = dict([(x[0],x[4]) for x in page['tags']])
+                    if 'ImageDescription' in _tags_dict and _tags_dict['ImageDescription'] is not None:
+                        if is_xml(_tags_dict['ImageDescription']):
+                            display(Markdown(f"**description:** (XML format)"))
+                            _d = json.loads(json.dumps(xmltodict.parse(_tags_dict['ImageDescription'])))
+                            display(JSON(json.loads(json.dumps(truncate_tree(_d,levels,max_text_length))),expanded=expanded))
+                        else:
+                            display(Markdown(f"**description:** (Plain text format)"))
+                            display(HTML(truncate_text_html(html.escape(_tags_dict['ImageDescription']),max_text_length)))
+                    else:
+                        display(Markdown(f"**description:**\n{None}"))
+
                     #display(JSON(json.dumps(xmltodict.parse(page['image_description']))))
                     #display(JSON(json.dumps(xmltodict.parse(page['image_description']))))
                     display(HTML(TiffInspector._page_html(page,max_text_length)))

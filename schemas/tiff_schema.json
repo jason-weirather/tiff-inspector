@@ -26,6 +26,12 @@
             "type": "boolean",
             "description": "Indicates whether the TIFF file is a BigTIFF file"
         },
+        "flags":{
+            "type":"array",
+            "items":{
+                "type":"string"
+            }
+        },
         "tiff_version":{
             "type":"string",
             "description":"The TIFF version"
