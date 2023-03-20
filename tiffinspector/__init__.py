@@ -141,8 +141,19 @@ class TiffInspector:
                         page_report['tags'] = self._tiff_tags_to_key_type_value_tuple(page.tags) if hasattr(page,'tags') else None
                         page_report['image_description'] = TiffInspector._get_description_text(page.tags) if hasattr(page,'tags') else None
                         page_report['sampleformat'] = sampleformat_to_text(page_report['sampleformat'])
-                        page_report['index'] = list(page_report['index']) if isinstance(page_report['index'],tuple) else page_report['index']
-                        page_report['flags'] = list(page_report['flags']) if isinstance(page_report['flags'],set) else page_report['flags']
+                        page_report['index'] = list(page_report['index']) if isinstance(page_report['index'],tuple) \
+                                                                          else page_report['index']
+                        page_report['chunked'] = list(page_report['chunked']) if isinstance(page_report['chunked'],tuple) \
+                                                                              else page_report['chunked']
+                        page_report['chunks'] = list(page_report['chunks']) if isinstance(page_report['chunks'],tuple) \
+                                                                            else page_report['chunks']
+                        page_report['extrasamples'] = list(page_report['extrasamples']) if isinstance(page_report['extrasamples'],tuple) \
+                                                                                        else page_report['extrasamples']
+                        page_report['shaped'] = list(page_report['shaped']) if isinstance(page_report['shaped'],tuple) \
+                                                                                        else page_report['shaped']
+
+                        page_report['flags'] = list(page_report['flags']) if isinstance(page_report['flags'],set) \
+                                                                          else page_report['flags']
                         level_report["pages"].append(page_report)
                 series_report['levels'].append(level_report)
             self.report["series"].append(series_report)
@@ -198,7 +209,7 @@ class TiffInspector:
                         if k3=='image_description': continue
                         display(Markdown(f"**{k3}:** {v3}"))
                     # Add the page shape to the HTML string
-                    if is_xml(page['image_description']) and page['image_description'] is not None:
+                    if page['image_description'] is not None and is_xml(page['image_description']):
                         _d = json.loads(json.dumps(xmltodict.parse(page['image_description'])))
                         display(JSON(json.loads(json.dumps(truncate_tree(_d,levels,max_text_length))),expanded=expanded))
                     elif page['image_description'] is not None:

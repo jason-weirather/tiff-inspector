@@ -3,6 +3,100 @@
     "$id":"page_schema.json",
     "type": "object",
     "properties": {
+        "axes": {
+            "type": "string"
+        },
+        "chunked": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "chunks": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "colormap": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            ]
+        },
+        "dtype": {
+            "type": "string",
+            "description": "The data type of the TIFF page"
+        },
+        "extrasamples": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            }
+        },
+        "flags": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "hash": {
+            "type": "string"
+        },
+        "index": {
+            "anyOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            ]
+        },
+        "is_ome": {
+            "type": "boolean"
+        },
+        "is_qpi": {
+            "type": "boolean"
+        },
+        "is_scn": {
+            "type": "boolean"
+        },
+        "is_svs": {
+            "type": "boolean"
+        },
+        "is_tiled": {
+            "type": "boolean"
+        },
+        "jpegheader": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string"
+                }
+            ]
+        },
+        "nbytes": {
+            "type": "integer"
+        },
+        "ndim": {
+            "type": "integer"
+        },
+        "sampleformat": {
+            "type": "string"
+        },
         "index": {
             "anyOf": [
                 {
@@ -23,9 +117,15 @@
             },
             "description": "The shape of the TIFF page in the form [height, width]"
         },
-        "dtype": {
-            "type": "string",
-            "description": "The data type of the TIFF page"
+        "shaped": {
+            "type": "array",
+            "items": {
+                "type": "integer"
+            },
+            "description": "The 5D shape of the TIFF page, represented as an array in the order of [time, z-stack, height, width, channels]. Each dimension corresponds to the size of the respective axis: time (T) for time series, z-stack (Z) for 3D image stacks, height (Y) and width (X) for spatial dimensions, and channels (S) for the number of color channels or image channels in the data. Please note that the interpretation of the time (T) and z-stack (Z) parameters is our best guess and may not be accurate for all cases."
+        },
+        "size": {
+            "type": "integer"
         },
         "image_description":{
             "type":["string","null"]
