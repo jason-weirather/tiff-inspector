@@ -4,23 +4,23 @@
     "type": "object",
     "description":"One level that is defined by a series, each of which contains the pages for the level.",
     "properties": {
-        "level_index": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "An integer indicating the index of the level within a TiffSeries."
-        },
-        "shape": {
-            "type": "array",
-            "items": {
-                "type": "integer",
-                "minimum": 1
-            },
-            "description": "A tuple indicating the shape of the image data in the TiffPages of the level."
-        },
-        "series_index": {
-            "type": "integer",
-            "minimum": 0,
-            "description": "The index of the series that contains the pages for this level"
+        "metadata":{
+            "type":"object",
+            "properties":{
+                "index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "An integer indicating the index of the series that defines this Series level within a TiffSeries."
+                },
+                "shape": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "description": "A tuple indicating the shape of the image data in the TiffPages of the level."
+                }
+            }
         },
         "page_count": {
             "type": "integer",
@@ -37,6 +37,11 @@
             "minimum": 0,
             "description": "The count of the TiffFrame within this series"
         },
+        "level_index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The index of the level indicating its order within the levels"
+        },
         "pages": {
             "type": "array",
             "minItems": 1,
@@ -50,5 +55,5 @@
             "description": "A list of TiffFrames that occur in a TiffSeries."
         }
     },
-    "required": ["level_index", "shape", "pages", "series_index"]
+    "required": ["level_index", "pages","frames","metadata"]
 }

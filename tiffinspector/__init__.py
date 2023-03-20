@@ -1,4 +1,4 @@
-import json, struct, html
+import json, struct, html, pkg_resources
 import tifffile
 from tifffile import TiffPage, TiffFrame
 
@@ -58,157 +58,148 @@ def is_xml(string):
     except ET.ParseError:
         return False
 
+def load_schema(schema_name):
+    schema_path = pkg_resources.resource_filename('tiffinspector', f'../schemas/{schema_name}.json')
+    with open(schema_path, 'r') as file:
+        schema = json.load(file)
+    return schema
+
+def header_html(metadata,lineweight=2,width=25):
+    # Create an empty HTML string
+    html_str = ""
+
+    for _property in metadata:
+        # Add the the property to the HTML string
+        html_str += f"<b>{_property}:</b> {metadata[_property]}<br>"
+                
+    # Add a horizontal line to separate the overall metadata from the page data
+    if lineweight: 
+        html_str += f'<hr style="border: {lineweight}px solid black; width: {width}%; padding-left: 10px; margin-left: 0;" />'
+    return html_str
+
 class TiffInspector:
     def __init__(self, file_path: str):
         self.file_path = file_path
         #version = get_tiff_version(self.file_path)
         self.tiff = tifffile.TiffFile(file_path)
+
+        # Get metadata properties to extract programatically
+        tiff_schema = load_schema('tiff_schema')
+        tiff_meta_properties = list(tiff_schema['properties']['metadata']['properties'].keys())
         self.report = {
-            "file_path": file_path,
-            "shape": list(self.tiff.asarray().shape),
-            "dtype": str(self.tiff.asarray().dtype),
-            "byteorder": self.tiff.byteorder,
-            "bigtiff": self.tiff.is_bigtiff,
-            "flags": list(self.tiff.flags),
-            "series_count":len([x for x in self.tiff.series]),
-            "page_count":len([x for x in self.tiff.pages]),
-            "series": []
+            'metadata':dict([(x,getattr(self.tiff, x)) for x in tiff_meta_properties])
         }
+        # clean up the automatically read-in data to make sure list-likes are saved json-compatible lists
+        for _property in self.report['metadata'].keys():
+            if isinstance(getattr(self.tiff, _property),tuple): 
+                self.report['metadata'][_property] = list(self.report['metadata'][_property])
+            if isinstance(getattr(self.tiff, _property),set): 
+                self.report['metadata'][_property] = list(self.report['metadata'][_property])
+
+        # Get other properties that are either not primary properties of TiffFile, or are the tree-structered child properties
+        self.report['shape'] = list(self.tiff.asarray().shape)
+        self.report['dtype'] = str(self.tiff.asarray().dtype)
+        self.report['series'] = []
+        self.report['series_count'] = len([x for x in self.tiff.series])
+        self.report['page_count'] = len([x for x in self.tiff.pages])
+
+        # iterate over the series
         for i, series in enumerate(self.tiff.series):
-            series_params = ['axes', 
-                             'dtype', 
-                             'index', 
-                             'is_multifile', 
-                             'is_pyramidal', 
-                             'keyframe', 
-                             'kind', 
-                             'name', 
-                             'ndim', 
-                             'offset', 
-                             'shape', 
-                             'size', 
-                             'transform']
-            series_report = dict([(x,getattr(series, x)) for x in series_params])
-            #series_report['pages'] = []
-            series_report['keyframe'] = series_report['keyframe'].index
-            series_report['dtype'] = str(series_report['dtype'])
+
+            # Get metadata properties to extract programatically
+            series_schema = load_schema('series_schema')
+            series_meta_properties = list(series_schema['properties']['metadata']['properties'].keys())
+            series_report = {
+                'metadata':dict([(x,getattr(series, x)) for x in series_meta_properties])
+            }
+            # clean up the automatically read-in data to make sure list-likes are saved json-compatible lists
+            for _property in series_report['metadata'].keys():
+                if isinstance(getattr(series, _property),tuple): 
+                    series_report['metadata'][_property] = list(series_report['metadata'][_property])
+                if isinstance(getattr(series, _property),set): 
+                    series_report['metadata'][_property] = list(series_report['metadata'][_property])
+            
+            # fix parameters to better fit the json
+            series_report['metadata']['keyframe'] = series_report['metadata']['keyframe'].index
+            series_report['metadata']['dtype'] = str(series_report['metadata']['dtype'])
             series_report['level_count'] = len(series.levels)
-            series_report['shape'] = list(series_report['shape'])
             series_report['levels'] = []
+
+            # iterate over the levels
             for j, level in enumerate(series.levels):
+                # Get metadata properties to extract programatically
+                level_schema = load_schema('level_schema')
+                level_meta_properties = list(level_schema['properties']['metadata']['properties'].keys())
                 level_report = {
-                    "level_index":j,
-                    "series_index":level.index,
-                    "shape":list(level.shape),
-                    "page_count":len(level.pages),
-                    "tiffpage_count":len([x for x in level.pages if isinstance(x,TiffPage)]),
-                    "tiffframe_count":len([x for x in level.pages if isinstance(x,TiffFrame)]),
-                    "pages":[],
-                    "frames":[]
+                    'metadata':dict([(x,getattr(level, x)) for x in level_meta_properties])
                 }
+                # clean up the automatically read-in data to make sure list-likes are saved json-compatible lists
+                for _property in level_report['metadata'].keys():
+                    if isinstance(getattr(level, _property),tuple): 
+                        level_report['metadata'][_property] = list(level_report['metadata'][_property])
+                    if isinstance(getattr(series, _property),set): 
+                        level_report['metadata'][_property] = list(level_report['metadata'][_property])
+
+                level_report['page_count'] = len(level.pages)
+                level_report['level_index'] = j
+                level_report['tiffpage_count'] = len([x for x in level.pages if isinstance(x,TiffPage)])
+                level_report['tiffframe_count'] = len([x for x in level.pages if isinstance(x,TiffFrame)])
+                level_report['pages'] = []
+                level_report['frames'] = []
+
+                # iterate over the pages
                 for k, page in enumerate(level.pages):
                     if isinstance(page,TiffFrame):
+
+                        # get the metadata properties of the TiffFrame
+                        frame_schema = load_schema('frame_schema')
+                        frame_meta_properties = list(frame_schema['properties']['metadata']['properties'].keys())
                         frame_report = {
-                            "index":page.index
+                            'metadata':dict([(x,getattr(page, x)) for x in frame_meta_properties])
                         }
+                        # Nothing to fix at the moment
                         level_report["frames"].append(frame_report)
                     else:
-                        page_params = ['axes', 
-                                   'chunked', 
-                                   'chunks', 
-                                   'colormap', 
-                                   'dtype', 
-                                   'extrasamples', 
-                                   'flags', 
-                                   'hash', 
-                                   'index', 
-                                   'is_tiled', 
-                                   'jpegheader', 
-                                   'nbytes', 
-                                   'ndim', 
-                                   'sampleformat', 
-                                   'shape', 
-                                   'shaped', 
-                                   'size'
-                                  ]
-                        page_report = dict([(x,getattr(page, x)) for x in page_params])
-                        page_report['shape'] = list(page.shape)
-                        page_report['dtype'] = str(page.dtype)
-                        page_report['hash'] = f"0x{format(page_report['hash'] & 0xFFFFFFFF, '08x')}"
+                        # get the metadata properties of the TiffPage
+                        page_schema = load_schema('page_schema')
+                        page_meta_properties = list(page_schema['properties']['metadata']['properties'].keys())
+                        page_report = {
+                            'metadata':dict([(x,getattr(page, x)) for x in page_meta_properties])
+                        }
+
+                        # Fix any list-like for json
+                        for _property in page_report['metadata'].keys():
+                            if isinstance(getattr(page, _property),tuple): 
+                                page_report['metadata'][_property] = list(page_report['metadata'][_property])
+                            if isinstance(getattr(page, _property),set): 
+                                page_report['metadata'][_property] = list(page_report['metadata'][_property])
+
+                        #page_report = dict([(x,getattr(page, x)) for x in page_params])
+                        page_report['metadata']['shape'] = list(page.shape)
+                        page_report['metadata']['dtype'] = str(page.dtype)
+                        page_report['metadata']['hash'] = f"0x{format(page_report['metadata']['hash'] & 0xFFFFFFFF, '08x')}"
                         page_report['tags'] = self._tiff_tags_to_key_type_value_tuple(page.tags) if hasattr(page,'tags') else None
                         #page_report['image_description'] = TiffInspector._get_description_text(page.tags) if hasattr(page,'tags') else None
-                        page_report['sampleformat'] = sampleformat_to_text(page_report['sampleformat'])
-                        page_report['index'] = list(page_report['index']) if isinstance(page_report['index'],tuple) \
-                                                                          else page_report['index']
-                        page_report['chunked'] = list(page_report['chunked']) if isinstance(page_report['chunked'],tuple) \
-                                                                              else page_report['chunked']
-                        page_report['chunks'] = list(page_report['chunks']) if isinstance(page_report['chunks'],tuple) \
-                                                                            else page_report['chunks']
-                        page_report['extrasamples'] = list(page_report['extrasamples']) if isinstance(page_report['extrasamples'],tuple) \
-                                                                                        else page_report['extrasamples']
-                        page_report['shaped'] = list(page_report['shaped']) if isinstance(page_report['shaped'],tuple) \
-                                                                                        else page_report['shaped']
-
-                        page_report['flags'] = list(page_report['flags']) if isinstance(page_report['flags'],set) \
-                                                                          else page_report['flags']
+                        page_report['metadata']['sampleformat'] = sampleformat_to_text(page_report['metadata']['sampleformat'])
                         level_report["pages"].append(page_report)
                 series_report['levels'].append(level_report)
             self.report["series"].append(series_report)
 
-    def _header_html(self):
-        # Create an empty HTML string
-        html_str = ""
-
-        # Add the file path to the HTML string
-        html_str += f"<b>File path:</b> {self.file_path}<br>"
-
-        # Add the shape to the HTML string
-        html_str += f"<b>Shape:</b> {self.report['shape']}<br>"
-
-        # Add the data type to the HTML string
-        html_str += f"<b>Data type:</b> {self.report['dtype']}<br>"
-
-        # Add the byte order to the HTML string
-        html_str += f"<b>Byte order:</b> {self.report['byteorder']}<br>"
-
-        # Add whether the file is a BigTIFF file to the HTML string
-        html_str += f"<b>BigTIFF:</b> {self.report['bigtiff']}<br>"
-        
-        # Addad the list of flags
-        html_str += f"<b>Flags:</b> {self.report['flags']}<br>"
-        
-        # Add the total count of series
-        html_str += f"<b>Number of Series:</b> {self.report['series_count']}<br>"
-        
-        # Add the total count of pages
-        html_str += f"<b>Number of Pages:</b> {self.report['page_count']}<br>"
-        
-        # Add a horizontal line to separate the overall metadata from the page data
-        html_str += "<hr>"
-        return html_str
     
     def display_report(self,expanded=False,levels=None,max_text_length=None):
-        display(HTML(self._header_html()))
+        display(HTML(header_html(self.report['metadata'],lineweight=4,width=75)))
         for i, series in enumerate(self.report['series']):
             display(Markdown(f"## Series {i+1} of {self.report['series_count']}"))
-            for k1,v1 in series.items():
-                if k1=='levels': continue
-                display(Markdown(f"**{k1}:** {v1}"))
-            display(Markdown('## '+'-'*40))
+            display(HTML(header_html(series['metadata'],lineweight=2,width=50)))
+
             for j, level in enumerate(series['levels']):
                 display(Markdown(f"### Level {j+1} of {series['level_count']}"))
-                for k2,v2 in level.items():
-                    if k2=='pages': continue
-                    display(Markdown(f"**{k2}:** {v2}"))
-                
-                display(Markdown('### '+'-'*30))
+                display(HTML(header_html(level['metadata'],lineweight=1,width=25)))
+
                 for k, page in enumerate(level['pages']):
-                    display(Markdown(f"#### Page {k+1} of {level['page_count']}"))
-                    for k3,v3 in page.items():
-                        if k3=='tags': continue
-                        if k3=='image_description': continue
-                        display(Markdown(f"**{k3}:** {v3}"))
-                    # Add the page shape to the HTML string
+                    display(Markdown(f"#### Page {k+1} of {level['tiffpage_count']}"))
+                    display(HTML(header_html(page['metadata'],lineweight=0)))
+
                     _tags_dict = dict([(x[0],x[4]) for x in page['tags']])
                     if 'ImageDescription' in _tags_dict and _tags_dict['ImageDescription'] is not None:
                         if is_xml(_tags_dict['ImageDescription']):
@@ -221,10 +212,11 @@ class TiffInspector:
                     else:
                         display(Markdown(f"**description:**\n{None}"))
 
-                    #display(JSON(json.dumps(xmltodict.parse(page['image_description']))))
-                    #display(JSON(json.dumps(xmltodict.parse(page['image_description']))))
                     display(HTML(TiffInspector._page_html(page,max_text_length)))
-                    display(Markdown('#### '+'-'*20))
+                    display(HTML(header_html({},lineweight=1)))
+                display(Markdown(f"#### Frames: {len(level['frames'])}"))
+                display(Markdown(f"{list([x['metadata']['index'] for x in level['frames']])}"))
+
         
     def __repr__(self):
         return json.dumps(self.report, indent=2)

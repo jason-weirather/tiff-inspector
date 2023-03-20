@@ -3,8 +3,13 @@
     "$id":"frame_schema.json",
     "type": "object",
     "properties":{
-        "index":{
-            "type":"integer"
-        }
+    	"metadata":{
+    		"type":"object",
+    		"properties":{
+                "index":{
+                    "type":"integer"
+                }
+    		}
+    	}
     }
 }
