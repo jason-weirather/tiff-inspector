@@ -12,7 +12,7 @@ def truncate_tree(tree, levels, max_text_length):
     if levels is None:
         return tree
     if levels == 0:
-        return {f"TRUNCATED ({len(tree.keys())})":truncate_text(json.dumps(tree),max_text_length=max_text_length)} if isinstance(tree,dict) else tree
+        return {f"TRUNCATED ({len(tree.keys())})":json.dumps(tree) if max_text_length is None else truncate_text(json.dumps(tree),max_text_length=max_text_length)} if isinstance(tree,dict) else tree
     if isinstance(tree, dict):
         pruned_dict = {}
         for key, value in tree.items():
@@ -21,7 +21,7 @@ def truncate_tree(tree, levels, max_text_length):
     elif isinstance(tree, list):
         pruned_list = []
         for item in tree:
-            pruned_list.append(truncate_tree(item, levels - 1), max_text_length)
+            pruned_list.append(truncate_tree(item, levels - 1, max_text_length))
         return pruned_list
     else:
         return tree
