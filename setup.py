@@ -9,7 +9,8 @@ setuptools.setup(
     package_dir={"tiffinspector": "tiffinspector"},
     packages=['tiffinspector'],
     install_requires=[
-        "tifffile>=2021.1.1"
+        "tifffile>=2021.1.1",
+        "imagecodecs"
     ],
     package_data={
         "tiffinspector":["../schemas/*.json"]
