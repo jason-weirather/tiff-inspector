@@ -1,3 +1,5 @@
+from ._version import __version__
+
 import json, struct, html, pkg_resources
 import tifffile
 from tifffile import TiffPage, TiffFrame

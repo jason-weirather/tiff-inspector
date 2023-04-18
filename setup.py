@@ -9,6 +9,7 @@ setuptools.setup(
     package_dir={"tiffinspector": "tiffinspector"},
     packages=['tiffinspector'],
     install_requires=[
+        "importlib_metadata; python_version<'3.8'",
         "tifffile>=2021.1.1",
         "imagecodecs"
     ],
