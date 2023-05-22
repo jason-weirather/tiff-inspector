@@ -10,7 +10,7 @@
                 "index": {
                     "type": "integer",
                     "minimum": 0,
-                    "description": "An integer indicating the index of the series that defines this Series level within a TiffSeries."
+                    "description": "An integer indicating the index of the parent Series."
                 },
                 "shape": {
                     "type": "array",
@@ -19,6 +19,10 @@
                         "minimum": 1
                     },
                     "description": "A tuple indicating the shape of the image data in the TiffPages of the level."
+                },
+                "name":{
+                    "type":"string",
+                    "description": "The name of the level from the TiffPageSeries level property"
                 }
             }
         },
@@ -47,13 +51,7 @@
             "minItems": 1,
             "items": {"$ref": "page_schema.json"},
             "description": "A list of TiffPages that make up the level within a TiffSeries."
-        },
-        "frames": {
-            "type": "array",
-            "minItems": 0,
-            "items": {"$ref": "frame_schema.json"},
-            "description": "A list of TiffFrames that occur in a TiffSeries."
         }
     },
-    "required": ["level_index", "pages","frames","metadata"]
+    "required": ["level_index", "pages","metadata"]
 }

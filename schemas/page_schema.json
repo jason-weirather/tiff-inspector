@@ -163,7 +163,17 @@
                     }
                 ]
             }
-        }
+        },
+        "frames": {
+            "type": "array",
+            "minItems": 0,
+            "items": {"$ref": "frame_schema.json"},
+            "description": "A list of TiffFrames that occur in a TiffSeries."
+        },
+        "frame_count": {
+            "type": "integer",
+            "description": "count"
+        }        
     },
-    "required": ["metadata", "tags"]
+    "required": ["metadata", "tags" , "frames", "frame_count"]
 }

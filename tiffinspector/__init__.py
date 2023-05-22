@@ -1,89 +1,39 @@
 from ._version import __version__
 
-import json, struct, html, pkg_resources
-import tifffile
+
+import tifffile, json
 from tifffile import TiffPage, TiffFrame
 
-import xml.sax.saxutils
-import xml.etree.ElementTree as ET
+#import xml.sax.saxutils
+
 from typing import List, Tuple
-import xmltodict
-from IPython.display import JSON, HTML, Markdown
 
-def truncate_tree(tree, levels, max_text_length):
-    if levels is None:
-        return tree
-    if levels == 0:
-        return {f"TRUNCATED ({len(tree.keys())})":json.dumps(tree) if max_text_length is None else truncate_text(json.dumps(tree),max_text_length=max_text_length)} if isinstance(tree,dict) else tree
-    if isinstance(tree, dict):
-        pruned_dict = {}
-        for key, value in tree.items():
-            pruned_dict[key] = truncate_tree(value, levels - 1, max_text_length)
-        return pruned_dict
-    elif isinstance(tree, list):
-        pruned_list = []
-        for item in tree:
-            pruned_list.append(truncate_tree(item, levels - 1, max_text_length))
-        return pruned_list
-    else:
-        return tree
+from .report_generator import display_report as report_generator_display_report
+from .utils import load_schema, truncate_text_html
 
-def parse_image_description(image_description: str) -> str:
-    root = ET.fromstring(image_description)
-    return xmltodict.parse(xmltodict.parse(image_description)['root'])
-        
-def format_xml_as_html(xml_str: str):
-    html_str = xml_str.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
-    return f"<pre>{html_str}</pre>"
 
-def truncate_text(val,max_text_length):
-    return str(val) if len(str(val)) <= max_text_length else f'{val[0:max_text_length]}...'
-
-def truncate_text_html(val,max_text_length):
-    if max_text_length is None or len(val)<=max_text_length:
-        return val
-    return f'<span style="color: blue;">({len(val)} characters):</span> {val[0:max_text_length]} <span style="color: blue;">...</span>'
 def sampleformat_to_text(sampleformat):
     format_mapping = {
         1: "Unsigned integer data",
         2: "Two's complement signed integer data",
         3: "IEEE floating-point data",
         4: "Undefined data format"
-    }
-    
+    }    
     return format_mapping.get(sampleformat, "Unknown format")
 
-def is_xml(string):
-    try:
-        ET.fromstring(string)
-        return True
-    except ET.ParseError:
-        return False
 
-def load_schema(schema_name):
-    schema_path = pkg_resources.resource_filename('tiffinspector', f'../schemas/{schema_name}.json')
-    with open(schema_path, 'r') as file:
-        schema = json.load(file)
-    return schema
-
-def header_html(metadata,lineweight=2,width=25):
-    # Create an empty HTML string
-    html_str = ""
-
-    for _property in metadata:
-        # Add the the property to the HTML string
-        html_str += f"<b>{_property}:</b> {metadata[_property]}<br>"
-                
-    # Add a horizontal line to separate the overall metadata from the page data
-    if lineweight: 
-        html_str += f'<hr style="border: {lineweight}px solid black; width: {width}%; padding-left: 10px; margin-left: 0;" />'
-    return html_str
 
 class TiffInspector:
-    def __init__(self, file_path: str):
+    def __init__(self, file_path: str, report: dict = None):
         self.file_path = file_path
         #version = get_tiff_version(self.file_path)
         self.tiff = tifffile.TiffFile(file_path)
+
+        if report is not None:
+            # In the case of a report being passed in we are basically copying another object
+            # we force a deep copy on report
+            self.report = json.loads(json.dumps(report))
+            return
 
         # Get metadata properties to extract programatically
         tiff_schema = load_schema('tiff_schema')
@@ -147,12 +97,15 @@ class TiffInspector:
                 level_report['tiffpage_count'] = len([x for x in level.pages if isinstance(x,TiffPage)])
                 level_report['tiffframe_count'] = len([x for x in level.pages if isinstance(x,TiffFrame)])
                 level_report['pages'] = []
-                level_report['frames'] = []
+
+                page_report = None
+                #level_report['frames'] = []
 
                 # iterate over the pages
                 for k, page in enumerate(level.pages):
                     if isinstance(page,TiffFrame):
-
+                        if page_report is None:
+                            raise ValueError("Expected to see a page before TiffFrame")
                         # get the metadata properties of the TiffFrame
                         frame_schema = load_schema('frame_schema')
                         frame_meta_properties = list(frame_schema['properties']['metadata']['properties'].keys())
@@ -160,8 +113,13 @@ class TiffInspector:
                             'metadata':dict([(x,getattr(page, x)) for x in frame_meta_properties])
                         }
                         # Nothing to fix at the moment
-                        level_report["frames"].append(frame_report)
+                        page_report['frames'].append(frame_report)
+                        page_report['frame_count'] = len(page_report['frames'])
                     else:
+                        # If theres a current page we need to store this one in the level
+                        if page_report is not None:
+                            level_report['pages'].append(page_report)
+
                         # get the metadata properties of the TiffPage
                         page_schema = load_schema('page_schema')
                         page_meta_properties = list(page_schema['properties']['metadata']['properties'].keys())
@@ -183,59 +141,85 @@ class TiffInspector:
                         page_report['tags'] = self._tiff_tags_to_key_type_value_tuple(page.tags) if hasattr(page,'tags') else None
                         #page_report['image_description'] = TiffInspector._get_description_text(page.tags) if hasattr(page,'tags') else None
                         page_report['metadata']['sampleformat'] = sampleformat_to_text(page_report['metadata']['sampleformat'])
-                        level_report["pages"].append(page_report)
+                        page_report['frames'] = []
+                        page_report['frame_count'] = 0
+                if page_report is not None:
+                    level_report["pages"].append(page_report)
                 series_report['levels'].append(level_report)
             self.report["series"].append(series_report)
 
+    def series(self, series_slice):
+        if isinstance(series_slice, slice):
+            start, stop, step = series_slice.indices(len(self.report['series']))
+            selected_series = [series for series in self.report['series'][start:stop:step]]
+        elif isinstance(series_slice, int):
+            selected_series = [self.report['series'][series_slice]]
+        else:
+            raise TypeError(f"Unsupported argument type {type(series_slice)}. Use int or slice.")
+        new_report = json.loads(json.dumps(self.report))
+        new_report['series'] = selected_series
+        new_report['series_count'] = len(selected_series)
+        return TiffInspector(file_path = self.file_path, report = new_report)
+
+    def levels(self, levels_slice):
+        if isinstance(levels_slice, slice):
+            new_report = json.loads(json.dumps(self.report))
+            new_report['series'] = []
+            for series in self.report['series']:
+                start, stop, step = levels_slice.indices(len(series['levels']))
+                selected_levels = [level for level in series['levels'][start:stop:step]]
+                if selected_levels:  # Only add the series if it contains at least one level
+                    series_copy = series.copy()
+                    series_copy['levels'] = selected_levels
+                    new_report['series'].append(series_copy)
+        elif isinstance(levels_slice, int):
+            new_report = json.loads(json.dumps(self.report))
+            new_report['series'] = []
+            for series in self.report['series']:
+                selected_levels = [series['levels'][levels_slice]]
+                if selected_levels:  # Only add the series if it contains at least one level
+                    series_copy = series.copy()
+                    series_copy['levels'] = selected_levels
+                    new_report['series'].append(series_copy)
+        else:
+            raise TypeError(f"Unsupported argument type {type(levels_slice)}. Use int or slice.")
+        new_report = json.loads(json.dumps(new_report))
+        for i, series in enumerate(new_report['series']):
+            new_report['series'][i]['level_count'] = len(series['levels'])
+        return TiffInspector(file_path = self.file_path, report = new_report)
+
+    def display_structure(self):
+        for i, series in enumerate(self.report["series"]):
+            series_name = series["metadata"].get("name", "Unnamed Series")
+            print(f"Series index:{series['metadata']['index']} name:({series_name}) shape:{series['metadata']['shape']}")
+            for j, level in enumerate(series["levels"]):
+                level_name = level['metadata'].get("name", "Unnamed Level")
+                print(f"    Level index:{level['level_index']} name:({level_name}) shape:{level['metadata']['shape']}")
+                for k, page in enumerate(level["pages"]):
+                    #print(page['metadata'])
+                    print(f"        Page index:{page['metadata']['index']} shape:{page['metadata']['shape']}")
+                    for k, frame in enumerate(page["frames"]):
+                        print(f"        Frame index:{frame['metadata']['index']}")
+
     
-    def display_report(self,expanded=False,levels=None,max_text_length=None):
-        display(HTML(header_html(self.report['metadata'],lineweight=4,width=75)))
-        for i, series in enumerate(self.report['series']):
-            display(Markdown(f"## Series {i+1} of {self.report['series_count']}"))
-            display(HTML(header_html(series['metadata'],lineweight=2,width=50)))
-
-            for j, level in enumerate(series['levels']):
-                display(Markdown(f"### Level {j+1} of {series['level_count']}"))
-                display(HTML(header_html(level['metadata'],lineweight=1,width=25)))
-
-                for k, page in enumerate(level['pages']):
-                    display(Markdown(f"#### Page {k+1} of {level['tiffpage_count']}"))
-                    display(HTML(header_html(page['metadata'],lineweight=0)))
-
-                    _tags_dict = dict([(x[0],x[4]) for x in page['tags']])
-                    if 'ImageDescription' in _tags_dict and _tags_dict['ImageDescription'] is not None:
-                        if is_xml(_tags_dict['ImageDescription']):
-                            display(Markdown(f"**description:** (XML format)"))
-                            _d = json.loads(json.dumps(xmltodict.parse(_tags_dict['ImageDescription'])))
-                            display(JSON(json.loads(json.dumps(truncate_tree(_d,levels,max_text_length))),expanded=expanded))
-                        else:
-                            display(Markdown(f"**description:** (Plain text format)"))
-                            display(HTML(truncate_text_html(html.escape(_tags_dict['ImageDescription']),max_text_length)))
-                    else:
-                        display(Markdown(f"**description:**\n{None}"))
-
-                    display(HTML(TiffInspector._page_html(page,max_text_length)))
-                    display(HTML(header_html({},lineweight=1)))
-                display(Markdown(f"#### Frames: {len(level['frames'])}"))
-                display(Markdown(f"{list([x['metadata']['index'] for x in level['frames']])}"))
-
+    def display_report(self,*args,**kwargs):
+        return report_generator_display_report(self,*args,**kwargs)
         
-    def __repr__(self):
-        return json.dumps(self.report, indent=2)
+    #def __repr__(self):
+    #    return json.dumps(self.report, indent=2)
     
-    def _repr_html_(self):
-        html_str = ""
-        html_str += self._header_html()
-        
-        # Iterate through the pages in the report
-        for page in self.report['pages']:
-            # Add the page shape to the HTML string
-            html_str += self._page_html()
+    #def _repr_html_(self):
+    #    html_str = ""
+    #    html_str += self._header_html()
+    #    
+    #    # Iterate through the pages in the report
+    #    for page in self.report['pages']:
+    #        # Add the page shape to the HTML string
+    #        html_str += self._page_html()
 
-        # Return the HTML string wrapped in a `pre` element
-        return f"<pre>{html_str}</pre>"
+    #    # Return the HTML string wrapped in a `pre` element
+    #    return f"<pre>{html_str}</pre>"
     
-    #<p style="color: blue;">ASCII (38085 characters)</p>
     def _tiff_tags_to_key_type_value_tuple(self, tiff_tags):
         kvt_tuples = []
         for tag in tiff_tags:
@@ -248,6 +232,8 @@ class TiffInspector:
                                    tag.count, 
                                    '0x'+tag.value.hex()
                                   ])
+            elif str(tag.dtype) in ['DATATYPES.RATIONAL','DATATYPES.SRATIONAL']:
+                kvt_tuples.append([tag.name, str(tag.dtype), tag.valueoffset, tag.count, tag.value[0]/tag.value[1]])
             else:
                 kvt_tuples.append([tag.name,str(tag.dtype), tag.valueoffset, tag.count, list(tag.value) if isinstance(tag.value,tuple) else tag.value])
         return kvt_tuples
@@ -263,26 +249,6 @@ class TiffInspector:
             if tag.name=='ImageDescription':
                 return tag.value
         return None
-    @classmethod
-    def _page_html(cls, page,max_text_length=None,indent_str="&nbsp;&nbsp;&nbsp;"):
-        # Add an indention for the tags table
-        html_str = ""+indent_str
-        # Create the table for the tags
-        html_str += "<table>"
-        # Iterate through the tags in the page
-        html_str += "<tr><th><b>name</b></th>"
-        html_str += "<th><b>dtype</b></th>"
-        html_str += "<th><b>valueoffset</b></th>"
-        html_str += "<th><b>count</b></th>"
-        html_str += "<th style='text-align:left;'>value</b></th></tr>"
-        for i, tag in enumerate(page['tags']):
-            # Add the tag name and value to the HTML string
-            html_str += f"<tr><td>{tag[0]}</td>"
-            html_str += f"<td>{tag[1]}</td>"
-            html_str += f"<td>{tag[2]}</td>"
-            html_str += f"<td>{tag[3]}</td>"
-            html_str += f"<td style='text-align:left;'>{truncate_text_html(html.escape(str(tag[4])),max_text_length)}</td></tr>"
-        # Close the table for the tags
-        html_str += "</table>"
-        return html_str
+
+
 
