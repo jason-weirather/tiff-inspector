@@ -8,6 +8,17 @@
     		"properties":{
                 "index":{
                     "type":"integer"
+                },
+                "shape": {
+                    "type": "array",
+                   "items": {
+                        "type": "integer"
+                   },
+                    "description": "An array representing the shape of the TIFF page in the form [height, width]."
+                },
+                "axes": {
+                    "type": "string",
+                    "description":"A string representing the order of the axes in the TIFF page, such as 'YX' for a 2D image or 'TYX' for a time series."
                 }
     		}
     	}

@@ -1,16 +1,17 @@
 from ._version import __version__
 
 
-import tifffile, json
+import tifffile, json, sys
 from tifffile import TiffPage, TiffFrame
 
 #import xml.sax.saxutils
 
 from typing import List, Tuple
 
-from .report_generator import display_report as report_generator_display_report
+from .report_generator import display_report as report_generator_display_report, get_layout_html, get_layout_text
 from .utils import load_schema, truncate_text_html
 
+from IPython.display import display, HTML
 
 def sampleformat_to_text(sampleformat):
     format_mapping = {
@@ -112,6 +113,15 @@ class TiffInspector:
                         frame_report = {
                             'metadata':dict([(x,getattr(page, x)) for x in frame_meta_properties])
                         }
+
+                        # Fix any list-like for json
+                        for _property in frame_report['metadata'].keys():
+                            if isinstance(getattr(page, _property),tuple): 
+                                frame_report['metadata'][_property] = list(frame_report['metadata'][_property])
+                            if isinstance(getattr(page, _property),set): 
+                                frame_report['metadata'][_property] = list(frame_report['metadata'][_property])
+
+
                         # Nothing to fix at the moment
                         page_report['frames'].append(frame_report)
                         page_report['frame_count'] = len(page_report['frames'])
@@ -188,37 +198,18 @@ class TiffInspector:
             new_report['series'][i]['level_count'] = len(series['levels'])
         return TiffInspector(file_path = self.file_path, report = new_report)
 
-    def display_structure(self):
-        for i, series in enumerate(self.report["series"]):
-            series_name = series["metadata"].get("name", "Unnamed Series")
-            print(f"Series index:{series['metadata']['index']} name:({series_name}) shape:{series['metadata']['shape']}")
-            for j, level in enumerate(series["levels"]):
-                level_name = level['metadata'].get("name", "Unnamed Level")
-                print(f"    Level index:{level['level_index']} name:({level_name}) shape:{level['metadata']['shape']}")
-                for k, page in enumerate(level["pages"]):
-                    #print(page['metadata'])
-                    print(f"        Page index:{page['metadata']['index']} shape:{page['metadata']['shape']}")
-                    for k, frame in enumerate(page["frames"]):
-                        print(f"        Frame index:{frame['metadata']['index']}")
 
+    def __str__(self):
+        return get_layout_text(self)
+
+    def _repr_html_(self):
+        return get_layout_html(self)
+
+    def __repr__(self):
+        return get_layout_text(self)
     
     def display_report(self,*args,**kwargs):
         return report_generator_display_report(self,*args,**kwargs)
-        
-    #def __repr__(self):
-    #    return json.dumps(self.report, indent=2)
-    
-    #def _repr_html_(self):
-    #    html_str = ""
-    #    html_str += self._header_html()
-    #    
-    #    # Iterate through the pages in the report
-    #    for page in self.report['pages']:
-    #        # Add the page shape to the HTML string
-    #        html_str += self._page_html()
-
-    #    # Return the HTML string wrapped in a `pre` element
-    #    return f"<pre>{html_str}</pre>"
     
     def _tiff_tags_to_key_type_value_tuple(self, tiff_tags):
         kvt_tuples = []
@@ -238,9 +229,6 @@ class TiffInspector:
                 kvt_tuples.append([tag.name,str(tag.dtype), tag.valueoffset, tag.count, list(tag.value) if isinstance(tag.value,tuple) else tag.value])
         return kvt_tuples
 
-
-    
-    
     @classmethod
     def _get_description_text(cls, tiff_tags):
         kvt_tuples = []
