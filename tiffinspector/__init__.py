@@ -50,8 +50,9 @@ class TiffInspector:
                 self.report['metadata'][_property] = list(self.report['metadata'][_property])
 
         # Get other properties that are either not primary properties of TiffFile, or are the tree-structered child properties
-        self.report['shape'] = list(self.tiff.asarray().shape)
-        self.report['dtype'] = str(self.tiff.asarray().dtype)
+        first_series = self.tiff.series[0]
+        self.report['shape'] = list(first_series.shape)
+        self.report['dtype'] = str(first_series.dtype)
         self.report['series'] = []
         self.report['series_count'] = len([x for x in self.tiff.series])
         self.report['page_count'] = len([x for x in self.tiff.pages])
