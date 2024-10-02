@@ -12,7 +12,8 @@ setuptools.setup(
         "importlib_metadata; python_version<'3.8'",
         "tifffile>=2021.1.1",
         "imagecodecs",
-        "ipython"
+        "ipython",
+        "xmltodict"
     ],
     package_data={
         "tiffinspector":["../schemas/*.json"]
